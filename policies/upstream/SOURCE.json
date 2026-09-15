@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/MulesGaming/brave-debloatinator",
+  "commit": "7ebd2d1b109e73e650878d5b8202ea282a083d81",
+  "path": "policies.json",
+  "git_blob": "de199e1bccf451db1f4e111a8cc59f0433afc26e",
+  "sha256": "712d90093972f0f58ed316a6ba58892caaa0e6f4d19fa58fbd15d47f3c6d6e97",
+  "hash_encoding": "UTF-8 with LF line endings, matching the upstream Git blob"
+}
