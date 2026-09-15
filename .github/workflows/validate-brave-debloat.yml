@@ -1,0 +1,79 @@
+name: Validate Brave debloat CI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/*brave-debloat.yml'
+      - 'scripts/**'
+      - 'config/build-lock.json'
+      - 'policies/**'
+  pull_request:
+    paths:
+      - '.github/workflows/*brave-debloat.yml'
+      - 'scripts/**'
+      - 'config/build-lock.json'
+      - 'policies/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.25.0'
+          cache: false
+      - name: Lint new workflows
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          actionlint .github/workflows/build-brave-debloat.yml .github/workflows/validate-brave-debloat.yml
+
+  validate:
+    name: Validate scripts on ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2022
+            target_os: windows
+            arch: x64
+          - runner: ubuntu-24.04
+            target_os: linux
+            arch: x64
+          - runner: macos-15
+            target_os: macos
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    env:
+      BUILD_TARGET_OS: ${{ matrix.target_os }}
+      BUILD_TARGET_ARCH: ${{ matrix.arch }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Check scripts and policy formats
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Preview source build without downloading Chromium
+        shell: python
+        run: |
+          import os
+          import subprocess
+          import sys
+          subprocess.run([
+              sys.executable, "scripts/build_brave.py",
+              "--target-os", os.environ["BUILD_TARGET_OS"],
+              "--arch", os.environ["BUILD_TARGET_ARCH"],
+              "--dry-run",
+          ], check=True)

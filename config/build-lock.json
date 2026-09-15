@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "brave": {
+    "repository": "https://github.com/brave/brave-core.git",
+    "tag": "v1.95.101",
+    "commit": "70ef749191a123c073cbd78890f7c9f63e787e49",
+    "version": "1.95.101",
+    "chromium_version": "153.0.8010.37"
+  },
+  "toolchain": {
+    "node": "24.16.0",
+    "pnpm": "11.11.0",
+    "git_min": "2.41.0",
+    "depot_tools_commit": "6b4cf2cdab13cb3766682eb635e3e73cdd65c215"
+  },
+  "build": {
+    "configuration": "Release",
+    "channel": "release"
+  }
+}

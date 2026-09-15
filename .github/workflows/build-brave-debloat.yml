@@ -1,0 +1,88 @@
+name: Build Brave with debloat policies
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_os:
+        description: Platforms to compile
+        type: choice
+        default: all
+        options: [all, windows, linux, macos]
+      macos_arch:
+        description: macOS CPU architecture
+        type: choice
+        default: arm64
+        options: [arm64, x64]
+      source:
+        description: Source to compile (repository includes this fork's committed changes)
+        type: choice
+        default: repository
+        options: [repository, upstream-stable]
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - id: matrix
+        name: Select cloud runners
+        env:
+          TARGET_OS: ${{ inputs.target_os }}
+          MACOS_ARCH: ${{ inputs.macos_arch }}
+          BUILD_ROOT_LINUX: ${{ vars.BRAVE_BUILD_ROOT_LINUX }}
+          BUILD_ROOT_WINDOWS: ${{ vars.BRAVE_BUILD_ROOT_WINDOWS }}
+          BUILD_ROOT_MACOS: ${{ vars.BRAVE_BUILD_ROOT_MACOS }}
+        run: python3 scripts/ci_matrix.py
+
+  build:
+    name: ${{ matrix.target_os }}-${{ matrix.arch }}
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.labels }}
+    timeout-minutes: 2880
+    concurrency:
+      group: brave-build-${{ github.repository_id }}-${{ matrix.target_os }}-${{ matrix.arch }}
+      cancel-in-progress: false
+    env:
+      BRAVE_BUILD_ROOT: ${{ matrix.build_root }}
+      BUILD_TARGET_OS: ${{ matrix.target_os }}
+      BUILD_TARGET_ARCH: ${{ matrix.arch }}
+      BUILD_SOURCE: ${{ inputs.source }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Compile and package
+        shell: python
+        run: |
+          import os
+          import subprocess
+          import sys
+          command = [
+              sys.executable, "scripts/build_brave.py",
+              "--target-os", os.environ["BUILD_TARGET_OS"],
+              "--arch", os.environ["BUILD_TARGET_ARCH"],
+              "--output", "dist",
+          ]
+          if os.environ["BUILD_SOURCE"] == "repository":
+              command += ["--source-dir", "."]
+          subprocess.run(command, check=True)
+      - name: Upload browser and policy bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brave-debloat-${{ matrix.target_os }}-${{ matrix.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
