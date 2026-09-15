@@ -120,6 +120,7 @@ def make_plan(lock: dict, source: dict, target_os: str, arch: str,
     target_flags = [f"--target_os={TARGET_OS[target_os]}", f"--target_arch={arch}"]
     build_flags = [*target_flags, "--channel=release", "--skip_signing", "--use_remoteexec=false",
                    "--gn=enable_updater:false", "--gn=enable_update_notifications:false",
+                   "--gn=enable_sparkle:false",
                    "--gn=should_generate_symbols:false"]
     if jobs:
         build_flags.append(f"--ninja=j:{jobs}")
